@@ -1,0 +1,511 @@
+object AddressChecker: TAddressChecker
+  Left = 263
+  Height = 559
+  Top = 103
+  Width = 766
+  Caption = 'Lightweight Firewall'
+  ClientHeight = 559
+  ClientWidth = 766
+  Color = clBtnFace
+  Font.CharSet = RUSSIAN_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  KeyPreview = True
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnKeyUp = FormKeyUp
+  Position = poDesktopCenter
+  LCLVersion = '2.2.0.4'
+  Scaled = False
+  object Log: TListView
+    Left = 8
+    Height = 381
+    Top = 8
+    Width = 508
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    AutoSort = False
+    AutoWidthLastColumn = True
+    Columns = <    
+      item
+        Caption = 'Time'
+        Width = 115
+        SortIndicator = siDescending
+      end    
+      item
+        Caption = 'Peer'
+        Width = 95
+      end    
+      item
+        Caption = 'Protocol'
+        Width = 57
+      end    
+      item
+        Caption = 'Requested Host'
+        Width = 237
+      end>
+    ColumnClick = False
+    PopupMenu = LogMenu
+    ReadOnly = True
+    RowSelect = True
+    ScrollBars = ssVertical
+    TabOrder = 0
+    ViewStyle = vsReport
+  end
+  object Charts: TPageControl
+    Left = 8
+    Height = 153
+    Top = 396
+    Width = 749
+    ActivePage = TabTraffic
+    Anchors = [akLeft, akRight, akBottom]
+    TabIndex = 0
+    TabOrder = 1
+    TabPosition = tpLeft
+    object TabTraffic: TTabSheet
+      Caption = 'Traffic'
+      ClientHeight = 145
+      ClientWidth = 721
+      object ChartTraffic: TChart
+        Left = 0
+        Height = 145
+        Top = 0
+        Width = 721
+        AllowZoom = False
+        AxisList = <        
+          item
+            Grid.Color = clGray
+            Grid.Cosmetic = False
+            Intervals.MinLength = 8
+            Intervals.NiceSteps = '1024'
+            Alignment = calRight
+            AxisPen.Visible = True
+            MarginsForMarks = False
+            Marks.Margins.Left = 0
+            Marks.Margins.Top = 0
+            Marks.Margins.Right = 0
+            Marks.Margins.Bottom = 0
+            Marks.Format = '%g'
+            Marks.LabelBrush.Style = bsClear
+            Marks.OverlapPolicy = opHideNeighbour
+            Marks.Style = smsCustom
+            Minors = <            
+              item
+                Grid.Color = clSilver
+                Grid.Cosmetic = False
+                Intervals.MinLength = 15
+                Intervals.Options = [aipUseCount, aipUseMinLength]
+                Intervals.Tolerance = 1
+                TickColor = clGray
+                Marks.LabelBrush.Style = bsClear
+              end>
+            Range.UseMin = True
+            Title.LabelFont.Orientation = 900
+            Title.LabelBrush.Style = bsClear
+            OnMarkToText = ChartTrafficAxisList0MarkToText
+          end        
+          item
+            Grid.Color = clGray
+            Alignment = calBottom
+            AxisPen.Visible = True
+            MarginsForMarks = False
+            Marks.Format = '%2:s'
+            Marks.LabelBrush.Style = bsClear
+            Marks.OverlapPolicy = opHideNeighbour
+            Marks.Source = DateTimeIntervalChartSource
+            Marks.Style = smsLabel
+            Minors = <            
+              item
+                Grid.Color = clSilver
+                Grid.Cosmetic = False
+                Intervals.MinLength = 12
+                Intervals.Options = [aipUseCount, aipUseMinLength]
+                Intervals.Tolerance = 1
+                TickColor = clGray
+                Marks.LabelBrush.Style = bsClear
+              end>
+            Title.LabelBrush.Style = bsClear
+          end>
+        BackColor = clWhite
+        Foot.Brush.Color = clBtnFace
+        Foot.Font.Color = clBlue
+        Frame.Color = clWhite
+        Legend.Alignment = laTopLeft
+        Legend.ColumnCount = 2
+        Legend.Frame.Color = clGray
+        Legend.UseSidebar = False
+        Legend.Visible = True
+        Margins.Left = 0
+        Margins.Top = 0
+        Margins.Right = 0
+        Margins.Bottom = 0
+        Title.Brush.Color = clBtnFace
+        Title.Font.Color = clBlue
+        Title.Text.Strings = (
+          'TChart'
+        )
+        Align = alClient
+        DoubleBuffered = True
+        object AreaHTTP_sent: TAreaSeries
+          Title = 'HTTP [sent]'
+          AreaBrush.Color = 5876991
+          AreaContourPen.Color = 33023
+          AreaContourPen.Cosmetic = False
+          AreaLinesPen.Mode = pmNop
+          AreaLinesPen.Style = psDot
+          Marks.Visible = False
+          UseZeroLevel = True
+        end
+        object AreaHTTP_received: TAreaSeries
+          Title = 'HTTP [received]'
+          AreaBrush.Color = 16759413
+          AreaContourPen.Color = 16744448
+          AreaContourPen.Cosmetic = False
+          AreaLinesPen.Mode = pmNop
+          AreaLinesPen.Style = psDot
+          Marks.Visible = False
+          UseZeroLevel = True
+        end
+      end
+    end
+    object TabPackets: TTabSheet
+      Caption = 'Requests'
+      ClientHeight = 145
+      ClientWidth = 721
+      ImageIndex = 1
+      object ChartRequests: TChart
+        Left = 0
+        Height = 145
+        Top = 0
+        Width = 721
+        AllowZoom = False
+        AxisList = <        
+          item
+            Grid.Color = clGray
+            Grid.Cosmetic = False
+            Alignment = calRight
+            AtDataOnly = True
+            AxisPen.Visible = True
+            MarginsForMarks = False
+            Marks.LabelBrush.Style = bsClear
+            Minors = <            
+              item
+                Grid.Color = clSilver
+                Grid.Cosmetic = False
+                Intervals.MinLength = 15
+                Intervals.Options = [aipUseCount, aipUseMinLength]
+                Intervals.Tolerance = 1
+                TickColor = clGray
+                Marks.LabelBrush.Style = bsClear
+              end>
+            Range.UseMin = True
+            Title.LabelFont.Orientation = 900
+            Title.LabelBrush.Style = bsClear
+            OnMarkToText = ChartRequestsAxisList0MarkToText
+          end        
+          item
+            Grid.Color = clGray
+            Alignment = calBottom
+            AxisPen.Visible = True
+            MarginsForMarks = False
+            Marks.Format = '%2:s'
+            Marks.LabelBrush.Style = bsClear
+            Marks.OverlapPolicy = opHideNeighbour
+            Marks.Source = DateTimeIntervalChartSource
+            Marks.Style = smsLabel
+            Minors = <            
+              item
+                Grid.Color = clSilver
+                Grid.Cosmetic = False
+                Intervals.MinLength = 12
+                Intervals.Options = [aipUseCount, aipUseMinLength]
+                TickColor = clGray
+                Marks.LabelBrush.Style = bsClear
+              end>
+            Title.LabelBrush.Style = bsClear
+          end>
+        BackColor = clWhite
+        Foot.Brush.Color = clBtnFace
+        Foot.Font.Color = clBlue
+        Frame.Color = clWhite
+        Legend.Alignment = laTopLeft
+        Legend.ColumnCount = 4
+        Legend.Frame.Color = clGray
+        Legend.UseSidebar = False
+        Legend.Visible = True
+        Margins.Left = 0
+        Margins.Top = 0
+        Margins.Right = 0
+        Margins.Bottom = 0
+        Title.Brush.Color = clBtnFace
+        Title.Font.Color = clBlue
+        Title.Text.Strings = (
+          'TChart'
+        )
+        Align = alClient
+        DoubleBuffered = True
+        object AreaHTTP_blocked: TAreaSeries
+          Title = 'HTTP [blocked]'
+          AreaBrush.Color = 7697919
+          AreaContourPen.Color = clRed
+          AreaLinesPen.Mode = pmNop
+          AreaLinesPen.Style = psDot
+          Marks.Visible = False
+          UseZeroLevel = True
+        end
+        object AreaDNS_blocked: TAreaSeries
+          Title = 'DNS [blocked]'
+          AreaBrush.Color = 723967
+          AreaContourPen.Color = 210
+          AreaLinesPen.Mode = pmNop
+          AreaLinesPen.Style = psDot
+          Marks.Visible = False
+          Marks.Format = '%0:.9g'
+          Marks.Frame.Visible = False
+          Marks.Style = smsValue
+          UseZeroLevel = True
+        end
+        object AreaDNS_allowed: TAreaSeries
+          Title = 'DNS [allowed]'
+          AreaBrush.Color = 7733178
+          AreaContourPen.Color = 65408
+          AreaLinesPen.Mode = pmNop
+          AreaLinesPen.Style = psDot
+          Marks.Visible = False
+          UseZeroLevel = True
+        end
+        object AreaHTTP_allowed: TAreaSeries
+          Title = 'HTTP [allowed]'
+          AreaBrush.Color = 63355
+          AreaContourPen.Color = 50274
+          AreaLinesPen.Mode = pmNop
+          AreaLinesPen.Style = psDot
+          Marks.Visible = False
+          UseZeroLevel = True
+        end
+      end
+    end
+  end
+  object PageControl1: TPageControl
+    Left = 524
+    Height = 381
+    Top = 8
+    Width = 233
+    ActivePage = TabSheet3
+    Anchors = [akTop, akRight, akBottom]
+    TabIndex = 0
+    TabOrder = 2
+    object TabSheet3: TTabSheet
+      Caption = 'Settings'
+      ClientHeight = 355
+      ClientWidth = 225
+      ImageIndex = 2
+      object CheckDNSBox: TCheckBox
+        Left = 8
+        Height = 17
+        Top = 8
+        Width = 184
+        AutoSize = False
+        Caption = 'DNS checking (+DHCP)'
+        OnClick = CheckDNSBoxClick
+        TabOrder = 0
+      end
+      object AnyTCPBox: TCheckBox
+        Left = 8
+        Height = 17
+        Top = 80
+        Width = 184
+        AutoSize = False
+        Caption = 'Allow any HTTP packet'
+        Enabled = False
+        TabOrder = 1
+      end
+      object AllowlistEnabledChk: TCheckBox
+        Left = 8
+        Height = 17
+        Top = 32
+        Width = 184
+        AutoSize = False
+        Caption = 'Allow-list enabled [F12]'
+        Checked = True
+        State = cbChecked
+        TabOrder = 2
+      end
+      object BlocklistEnabledChk: TCheckBox
+        Left = 8
+        Height = 17
+        Top = 56
+        Width = 184
+        AutoSize = False
+        Caption = 'Block-list enabled'
+        Checked = True
+        State = cbChecked
+        TabOrder = 3
+      end
+      object BtnReloadLists: TButton
+        Left = 8
+        Height = 25
+        Top = 208
+        Width = 130
+        Caption = 'Reload lists'
+        OnClick = BtnReloadListsClick
+        TabOrder = 4
+      end
+      object BtnResetCharts: TButton
+        Left = 8
+        Height = 25
+        Top = 240
+        Width = 130
+        Caption = 'Reset all charts'
+        OnClick = BtnResetChartsClick
+        TabOrder = 5
+      end
+      object AnyTCPBox1: TCheckBox
+        Left = 8
+        Height = 17
+        Top = 104
+        Width = 184
+        AutoSize = False
+        Caption = 'SOCKS 5'
+        Enabled = False
+        TabOrder = 6
+      end
+      object Bevel1: TBevel
+        Left = 8
+        Height = 2
+        Top = 128
+        Width = 210
+      end
+      object Bevel2: TBevel
+        Left = 8
+        Height = 2
+        Top = 192
+        Width = 210
+      end
+      object TrafficLimiterBox: TCheckBox
+        Left = 8
+        Height = 17
+        Top = 136
+        Width = 184
+        AutoSize = False
+        Caption = 'Limit network speed'
+        OnChange = TrafficLimiterBoxChange
+        TabOrder = 7
+      end
+      object TrafficLimiter: TSpinEdit
+        Left = 8
+        Height = 21
+        Top = 160
+        Width = 64
+        Alignment = taRightJustify
+        AutoSize = False
+        MaxValue = 65536
+        MinValue = 1
+        OnChange = TrafficLimiterChange
+        TabOrder = 8
+        Value = 65536
+      end
+      object Label2: TLabel
+        Left = 80
+        Height = 21
+        Top = 160
+        Width = 31
+        AutoSize = False
+        Caption = 'B/s'
+        Layout = tlCenter
+      end
+    end
+    object TabSheet1: TTabSheet
+      Caption = 'Allow list'
+      ClientHeight = 355
+      ClientWidth = 225
+      object AllowList: TListBox
+        Left = 0
+        Height = 355
+        Top = 0
+        Width = 225
+        Align = alClient
+        ItemHeight = 0
+        TabOrder = 0
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'Block list'
+      ClientHeight = 355
+      ClientWidth = 225
+      ImageIndex = 1
+      object BlockList: TListBox
+        Left = 0
+        Height = 355
+        Top = 0
+        Width = 225
+        Align = alClient
+        ItemHeight = 0
+        TabOrder = 0
+      end
+    end
+  end
+  object DNSServer: TIdUDPServer
+    Bindings = <>
+    DefaultPort = 53
+    OnUDPRead = DNSServerUDPRead
+    Left = 24
+    Top = 72
+  end
+  object DNSClient: TIdUDPClient
+    Host = '8.8.8.8'
+    Port = 53
+    ReceiveTimeout = 150
+    Left = 56
+    Top = 72
+  end
+  object StatisticsTimer: TTimer
+    OnTimer = StatisticsTimerTimer
+    Left = 197
+    Top = 368
+  end
+  object DHCPServer: TIdUDPServer
+    Bindings = <    
+      item
+        IP = '0.0.0.0'
+        Port = 67
+      end    
+      item
+        IP = '0.0.0.0'
+        Port = 68
+      end>
+    DefaultPort = 67
+    OnUDPRead = DHCPServerUDPRead
+    Left = 24
+    Top = 120
+  end
+  object LogMenu: TPopupMenu
+    Left = 160
+    Top = 120
+    object CopyLogRecordBtn: TMenuItem
+      Caption = 'Copy record as text'
+      OnClick = CopyLogRecordBtnClick
+    end
+    object Savelogwithtimestamp1: TMenuItem
+      Caption = 'Save log with timestamp'
+      OnClick = Savelogwithtimestamp1Click
+    end
+    object N1: TMenuItem
+      Caption = '-'
+    end
+    object ClearLogBtn: TMenuItem
+      Caption = 'Clear log'
+      OnClick = ClearLogBtnClick
+    end
+  end
+  object DateTimeIntervalChartSource: TDateTimeIntervalChartSource
+    Params.MaxLength = 240
+    Params.NiceSteps = '30'
+    Params.Options = [aipUseMaxLength, aipUseNiceSteps]
+    Params.Tolerance = 1
+    DateTimeFormat = 'hh:nn:ss'
+    Steps = [dtsSecond]
+    Left = 160
+    Top = 368
+  end
+end
