@@ -11,14 +11,14 @@ type
 
   { TSpinLock }
 
-  TSpinLock = class
+  TSpinLock = class(TSynchroObject)
   private
     dest: cardinal;
   public
     constructor Create;
 
-    procedure Acquire;
-    procedure Release;
+    procedure Acquire; override;
+    procedure Release; override;
   end;
 
   { TJob }
@@ -71,7 +71,7 @@ type
     JobClass: JobTypeClass;
 
     JobPool: TList<JobType>;
-    JobLock: TCriticalSection;
+    JobPoolLock: TSpinLock;//TCriticalSection;
     WorkerPool: TList<WorkerType>;
     ActiveJobs: TQueue<JobType>;
     ActiveJobsLock: TSpinLock;//TCriticalSection;
@@ -97,6 +97,9 @@ implementation
 function TJobManager<D>.CreateNewWorker: WorkerType;
 begin
   Result := WorkerType.Create(Self);
+
+  // register it
+  WorkerPool.Add(Result);
 end;
 
 procedure TJobManager<D>.InitWorkerPool(const NumberOfThreads: shortint);
@@ -104,13 +107,16 @@ var
   i: shortint;
 begin
   for i := 1 to NumberOfThreads do
-    WorkerPool.Add(CreateNewWorker());
+    CreateNewWorker();
 end;
 
 function TJobManager<D>.CreateNewJob: JobType;
 begin
   Result := JobClass.Create();
   Result.Awake := False;
+
+  // register it
+  JobPool.Add(Result);
 end;
 
 procedure TJobManager<D>.InitJobPool(const NumberOfJobs: shortint);
@@ -118,14 +124,14 @@ var
   i: shortint;
 begin
   for i := 1 to NumberOfJobs do
-    JobPool.Add(CreateNewJob());
+    CreateNewJob();
 end;
 
 procedure TJobManager<D>.ResumeRandomWorker;
 var
   worker: WorkerType;
 begin
-  TThread.Yield;
+  TThread.Yield;// Sleep(1);
 
   if ActiveJobs.Count = 0 then Exit;
 
@@ -179,7 +185,7 @@ begin
   WorkerPool := TList<WorkerType>.Create;
   ActiveJobs := TQueue<JobType>.Create;
 
-  JobLock := TCriticalSection.Create;
+  JobPoolLock := TSpinLock.Create;
   ActiveJobsLock := TSpinLock.Create;
 
   InitWorkerPool(ThreadCount);
@@ -214,7 +220,7 @@ begin
   FreeAndNil(JobPool);
 
   FreeAndNil(ActiveJobsLock);
-  FreeAndNil(JobLock);
+  FreeAndNil(JobPoolLock);
 
   inherited Destroy;
 end;
@@ -229,7 +235,7 @@ begin
   for job in JobPool do
     if not job.Awake then
     begin
-      JobLock.Acquire;
+      JobPoolLock.Acquire;
       try
         if not job.Awake then
         begin
@@ -242,14 +248,14 @@ begin
           Break;
         end;
       finally
-        JobLock.Release;
+        JobPoolLock.Release;
       end;
     end;
 
   // instantiate a fresh new JOB object
   if not Assigned(selectedJob) then
   begin
-    JobLock.Acquire;
+    JobPoolLock.Acquire;
     try
       selectedJob := CreateNewJob();
 
@@ -257,7 +263,7 @@ begin
       selectedJob.SetJobData(NewData);
       selectedJob.Awake := True;
     finally
-      JobLock.Release;
+      JobPoolLock.Release;
     end;
   end;
 
@@ -296,7 +302,7 @@ begin
       Manager.PutScheduledJob(job);
     end
     else
-      Suspend;//Sleep(5);
+      Self.Suspend;//Sleep(5);
   end;
 end;
 
