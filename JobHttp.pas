@@ -32,6 +32,7 @@ type
     procedure HTTP_Check;
     procedure HTTP_Connect;
     procedure HTTP_Serve;
+    procedure HTTP_Proxy_Config;
     procedure HTTP_Disconnect;
 
     procedure SetJobData(const Data: TSocket); override;
@@ -40,31 +41,27 @@ type
     IsSecure: boolean;
     TargetHost: string;
     TargetPort: string;
+    TargetDocument: string;
 
-    procedure ParseHostAndPort(const Address: string; const DefaultPort: string);
+    procedure ParseHostAndPort(const Address: string);
     function ForwardPacket(const Src: TBlockSocket; const Dst: TBlockSocket): integer;
 
     function CheckHostName: boolean;
     procedure AllowConnection;
     procedure BlockConnection;
-  protected
-    HostNameChecker: THostNameChecker;
-    Handler_StatAllowed: TStatisticsAllowedCounter;
-    Handler_StatBlocked: TStatisticsBlockedCounter;
-    Handler_StatTransfered: TStatisticsTransferedCounter;
-    BandwidthMax: integer;
   public
     constructor Create; override;
     destructor Destroy; override;
 
     procedure Reset; override;
   public
-    procedure SetRequestChecker(const Handler: THostNameChecker);
-    procedure SetHandler_StatAllowed(const Handler: TStatisticsAllowedCounter);
-    procedure SetHandler_StatBlocked(const Handler: TStatisticsBlockedCounter);
-    procedure SetHandler_StatTransfered(const Handler: TStatisticsTransferedCounter);
+    HostNameChecker: THostNameChecker;
+    Handler_StatAllowed: TStatisticsAllowedCounter;
+    Handler_StatBlocked: TStatisticsBlockedCounter;
+    Handler_StatTransfered: TStatisticsTransferedCounter;
+    BandwidthMax: integer;
 
-    procedure SetBandwidthMax(const Value: integer);
+    property Host: string read TargetHost;
   end;
 
   { TJobManagerHTTP }
@@ -81,6 +78,7 @@ type
 
 const
   BANDWIDTH_UNLIMITED = 0;
+  TCP_LINGER_TIME = 175; // ms
 
 implementation
 
@@ -88,18 +86,46 @@ const
   INVALID_SOCKET = TSocket(not (0));
 
   HTTP_METHODS_ALLOWED = 'CONNECT-GET-POST-PUT-DELETE-HEAD-OPTIONS-TRACE-PATCH';
-  HTTP_PROXY_METHOD = 'CONNECT';
+  HTTP_METHOD_PROXY = 'CONNECT';
 
-  DEFAULT_PORT_str_HTTP = '80';
-  DEFAULT_PORT_str_HTTPS = '443';
+  HTTP_PORT_DEFAULT_str = '80';
+  HTTP_PORT_SECURE_str = '443';
 
+  HTTP_REPLY_OK = 'HTTP/1.1 200 OK';
   HTTP_REPLY_CONNECTED = 'HTTP/1.1 200 Connection established';
   HTTP_REPLY_FORBIDDEN = 'HTTP/1.1 403 Forbidden';
   HTTP_REPLY_INTERNAL_ERROR = 'HTTP/1.1 500 Internal Error';
   HTTP_REPLY_SERVICE_UNAVAILABLE = 'HTTP/1.1 503 Service Unavailable';
 
+  HTTP_HEADER_PROXY_CONFIG = 'application/x-ns-proxy-autoconfig';
+
   HTTP_CONNECTION_TIMEOUT = 5250; // ms
   HTTP_READ_TIMEOUT = 4; // ms
+
+  HTTP_HOST_LOCAL = 'localhost';
+
+// rudimentary PAC-file handling
+
+var
+  pacFileContents: string = '';
+
+function GetPacContent: string;
+begin
+  if pacFileContents.IsEmpty then
+  begin
+    with TStringList.Create do
+    begin
+      if FileExists('./proxy.pac') then
+        LoadFromFile('./proxy.pac');
+
+      pacFileContents := Text;
+
+      Free;
+    end;
+  end;
+
+  Result := pacFileContents;
+end;
 
 { TJobManagerHTTP }
 
@@ -108,7 +134,7 @@ var
   job: JobType;
 begin
   for job in JobPool do
-    TJobHTTP(job).SetRequestChecker(Handler);
+    TJobHTTP(job).HostNameChecker := Handler;
 end;
 
 procedure TJobManagerHTTP.SetHandler_StatAllowed(
@@ -117,7 +143,7 @@ var
   job: JobType;
 begin
   for job in JobPool do
-    TJobHTTP(job).SetHandler_StatAllowed(Handler);
+    TJobHTTP(job).Handler_StatAllowed := Handler;
 end;
 
 procedure TJobManagerHTTP.SetHandler_StatBlocked(
@@ -126,7 +152,7 @@ var
   job: JobType;
 begin
   for job in JobPool do
-    TJobHTTP(job).SetHandler_StatBlocked(Handler);
+    TJobHTTP(job).Handler_StatBlocked := Handler;
 end;
 
 procedure TJobManagerHTTP.SetHandler_StatTransfered(
@@ -135,7 +161,7 @@ var
   job: JobType;
 begin
   for job in JobPool do
-    TJobHTTP(job).SetHandler_StatTransfered(Handler);
+    TJobHTTP(job).Handler_StatTransfered := Handler;
 end;
 
 procedure TJobManagerHTTP.SetBandwidthMax(const Value: integer);
@@ -143,7 +169,7 @@ var
   job: JobType;
 begin
   for job in JobPool do
-    TJobHTTP(job).SetBandwidthMax(Value);
+    TJobHTTP(job).BandwidthMax := Value;
 end;
 
 { TJobHTTP }
@@ -169,16 +195,17 @@ begin
   if (Args.Count > 1) and (Pos(Args[INDEX_METHOD], HTTP_METHODS_ALLOWED) <> 0) then
   begin
     // parse the request
-    IsSecure := (Args[INDEX_METHOD] = HTTP_PROXY_METHOD);
-    if IsSecure then
-      ParseHostAndPort(Args[INDEX_ADDRESS], DEFAULT_PORT_str_HTTPS)
-    else
-      ParseHostAndPort(Args[INDEX_ADDRESS], DEFAULT_PORT_str_HTTP);
+    IsSecure := (Args[INDEX_METHOD] = HTTP_METHOD_PROXY);
+    ParseHostAndPort(Args[INDEX_ADDRESS]);
 
-    // special case
-    if TargetHost = '' then
+    if (TargetDocument = '/proxy.pac') or (TargetDocument = '/wpad.dat') then
+      // handle automatic-proxy-configuration requests
+      SetNextAction(HTTP_Proxy_Config)
+    else if (TargetHost = HTTP_HOST_LOCAL) and (TargetPort = '15000') then
+      // deny cyclic requests
       SetNextAction(HTTP_Disconnect)
     else
+      // continue as usial
       SetNextAction(HTTP_Check);
   end
   else
@@ -289,6 +316,14 @@ begin
     SetNextAction(HTTP_Disconnect);
 end;
 
+procedure TJobHTTP.HTTP_Proxy_Config;
+begin
+  Client.SendString(HTTP_REPLY_OK + CRLF + HTTP_HEADER_PROXY_CONFIG +
+    CRLF + CRLF + GetPacContent);
+
+  SetNextAction(HTTP_Disconnect);
+end;
+
 procedure TJobHTTP.HTTP_Disconnect;
 begin
   Server.CloseSocket;
@@ -302,9 +337,10 @@ end;
 procedure TJobHTTP.SetJobData(const Data: TSocket);
 begin
   Client.Socket := Data;
+  Client.SetLinger(True, TCP_LINGER_TIME);
 end;
 
-procedure TJobHTTP.ParseHostAndPort(const Address: string; const DefaultPort: string);
+procedure TJobHTTP.ParseHostAndPort(const Address: string);
 var
   i: integer;
   Target: string;
@@ -312,16 +348,22 @@ begin
   Target := Address;
   // FORMAT:  protocol://host:port/document
   // OR:      host:port
+  // OR:      /document
   try
     // remove optional protocol prefix
     i := Pos('://', Target);
     if i <> 0 then
-      Target := Copy(Target, i + 3, Length(Target));
+      Target := Copy(Target, i + 3, MaxInt);
 
     // remove optional document
     i := Pos('/', Target);
     if i <> 0 then
+    begin
+      TargetDocument := Copy(Target, i, MaxInt);
       Target := Copy(Target, 1, i - 1);
+    end
+    else
+      TargetDocument := '/';
 
     // does port specified?
     i := Pos(':', Target);
@@ -333,8 +375,17 @@ begin
     else
     begin
       TargetHost := Target;
-      TargetPort := DefaultPort;
+      TargetPort := ifThen<string>(IsSecure, HTTP_PORT_SECURE_str,
+        HTTP_PORT_DEFAULT_str);
+
+      // handle requests to local resources
+      if Length(TargetHost) = 0 then TargetHost := HTTP_HOST_LOCAL;
     end;
+
+    // normalize
+    TargetHost := LowerCase(TargetHost);
+    TargetPort := LowerCase(TargetPort);
+    TargetDocument := LowerCase(TargetDocument);
   finally
     SetLength(Target, 0);
   end;
@@ -422,32 +473,6 @@ begin
   Client.Socket := INVALID_SOCKET;
 
   SetNextAction(HTTP_Init);
-end;
-
-procedure TJobHTTP.SetRequestChecker(const Handler: THostNameChecker);
-begin
-  HostNameChecker := Handler;
-end;
-
-procedure TJobHTTP.SetHandler_StatAllowed(const Handler: TStatisticsAllowedCounter);
-begin
-  Handler_StatAllowed := Handler;
-end;
-
-procedure TJobHTTP.SetHandler_StatBlocked(const Handler: TStatisticsBlockedCounter);
-begin
-  Handler_StatBlocked := Handler;
-end;
-
-procedure TJobHTTP.SetHandler_StatTransfered(
-  const Handler: TStatisticsTransferedCounter);
-begin
-  Handler_StatTransfered := Handler;
-end;
-
-procedure TJobHTTP.SetBandwidthMax(const Value: integer);
-begin
-  BandwidthMax := Value;
 end;
 
 end.

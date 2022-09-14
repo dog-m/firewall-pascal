@@ -28,7 +28,7 @@
       <AutoIncrementBuild Value="True"/>
       <MinorVersionNr Value="5"/>
       <RevisionNr Value="2"/>
-      <BuildNr Value="61"/>
+      <BuildNr Value="62"/>
       <Language Value="0419"/>
       <StringTable LegalCopyright="Mikhail Onischuck" OriginalFilename="firewall.exe"/>
     </VersionInfo>

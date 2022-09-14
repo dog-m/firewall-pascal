@@ -10,19 +10,23 @@ type
   { TStateMachine }
 
   TStateMachine = class abstract
-  protected
+  private
     NextAction: TTransitionAction;
+    Cancelled: boolean;
 
+    function GetFinished: boolean;
+  protected
+    procedure CancellHandler; virtual;
     procedure SetNextAction(const Action: TTransitionAction);
-    function GetTerminated: boolean;
   public
     constructor Create; virtual;
 
     procedure DoStep;
-    procedure Reset; virtual; abstract;
-    procedure ForcedTermination; virtual;
+    procedure Reset; virtual;
+    procedure Cancell; virtual;
 
-    property Terminated: boolean read GetTerminated;
+    property IsFinished: boolean read GetFinished;
+    property IsCancelled: boolean read Cancelled;
   end;
 
 const
@@ -49,22 +53,43 @@ begin
 
     // do the work
     action();
+
+    // handle canceling
+    if Cancelled then
+    begin
+      // call the handler
+      CancellHandler;
+
+      // overwrite further actions
+      NextAction := NO_ACTION;
+    end;
   end;
 end;
 
-procedure TStateMachine.ForcedTermination;
+procedure TStateMachine.Reset;
 begin
   NextAction := NO_ACTION;
+  Cancelled := False;
 end;
 
-function TStateMachine.GetTerminated: boolean;
+procedure TStateMachine.Cancell;
+begin
+  Cancelled := True;
+end;
+
+function TStateMachine.GetFinished: boolean;
 begin
   Result := not Assigned(NextAction);
+end;
+
+procedure TStateMachine.CancellHandler;
+begin
 end;
 
 constructor TStateMachine.Create;
 begin
   NextAction := NO_ACTION;
+  Cancelled := False;
 end;
 
 end.

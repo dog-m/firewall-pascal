@@ -71,6 +71,7 @@ begin
   RequestJobManager := TJobManagerHTTP.Create(TJobHTTP);
 
   ListenerSocket := TTCPBlockSocket.Create;
+  ListenerSocket.SetLinger(True, TCP_LINGER_TIME);
   Listener := TListeningThread.Create(Self);
 end;
 

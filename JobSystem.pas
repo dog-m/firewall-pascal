@@ -78,8 +78,6 @@ type
 
     function GetScheduledJob: JobType; override;
     procedure PutScheduledJob(const Job: JobType); override;
-  protected
-
   public
     constructor Create(const AJobClass: JobTypeClass;
       const ThreadCount: shortint = 16; const InitialJobPoolSize: shortint = 120);
@@ -138,7 +136,7 @@ begin
   for worker in WorkerPool do
     if worker.Suspended then
     begin
-      worker.Resume;
+      worker.Suspended := False;
 
       break;
     end;
@@ -160,7 +158,7 @@ end;
 
 procedure TJobManager<D>.PutScheduledJob(const Job: JobType);
 begin
-  if Job.Terminated then
+  if Job.IsFinished then
   begin
     // this thing is no longer needed to be processed, so just deactivate it
     Job.Awake := False;
@@ -201,8 +199,11 @@ begin
   for worker in WorkerPool do
   begin
     worker.Terminate();
-    if worker.Suspended then worker.Resume;
-    worker.WaitFor();
+    if worker.Suspended then
+      worker.Suspended := False;
+    Sleep(1);
+
+    worker.WaitFor;
     worker.Free;
   end;
 
@@ -210,7 +211,7 @@ begin
   for job in JobPool do
   begin
     if job.Awake then
-      job.ForcedTermination;
+      job.Cancell;
 
     job.Free;
   end;
@@ -301,8 +302,8 @@ begin
 
       Manager.PutScheduledJob(job);
     end
-    else
-      Self.Suspend;//Sleep(5);
+    else if not Terminated then
+      Self.Suspended := True;//Sleep(5);
   end;
 end;
 
